@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="appModule">
+<head>
+    <meta charset="UTF-8">
+    <title>index</title>
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
+</head>
+<body>
+<div class="navbar navbar-inverse">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a href="#/" class="navbar-brand">我的书店</a>
+        </div>
+        <div class="navbar-header">
+            <ul class="nav navbar-nav">
+                <li> <a href="#/">首页</a></li>
+                <li><a href="#/book/list">图书列表</a></li>
+               <!-- <li><a href="#/book/detail">图书详情</a></li>-->
+                <li><a href="#/book/add">图书管理</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+<div ng-view="" class="container"></div>
+
+<script src="./node_modules/angular/angular.js"></script>
+<script src="./node_modules/angular-resource/angular-resource.js"></script>
+<script src="./node_modules/angular-route/angular-route.js"></script>
+<script>
+    var app = angular.module('appModule',['ngResource','ngRoute']);
+    //要配置路由，每一个路由使用某一个具体页面(路由中提供了一个$route的服务)
+    //封装对图书管理的服务
+    app.factory('book',function($resource){
+        return $resource('/books/:id',null,{
+            update:{
+                method:'PUT'
+            }
+        })
+    });
+    app.config(function($routeProvider){//要配置路由中的服务
+        $routeProvider.when('/',{//书店的首页
+            templateUrl:'tmpl/index.html',
+            controller:'indexCtrl'
+        }).when('/book/add',{//增加图书
+            templateUrl:'tmpl/add.html',
+            controller:'addCtrl'
+        }).when('/book/list',{//书的列表
+            templateUrl:'tmpl/list.html',
+            controller:'listCtrl'
+        }).when('/book/detail/:nid',{//书的详情页
+            templateUrl:'tmpl/detail.html',
+            controller:'detailCtrl'
+        }).otherwise('/');//以上都不满足跳转到首页
+        //路由 访问不同的路径显示不同的内容
+        //锚点# 不刷新页面并且改变url路径，而且会产生历史管理
+    });
+    app.controller('indexCtrl',function($scope){
+        $scope.logo='精品书店'
+    });
+    app.controller('addCtrl',function($scope,book,$location){
+        //增加图书
+        $scope.book = {};//存放增加的书的所有信息
+        $scope.submit = function(){
+            //调用保存的方法即可
+            book.save($scope.book).$promise.then(function(){
+                $location.path('/book/list');
+            });
+        }
+    });
+    app.controller('detailCtrl',function($scope,$location,$routeParams,book){
+        //获取列表页传过来的nid  /book/detail/:nid模糊匹配
+        // 通过$routeParams获取/book/detail/:nid==》/book/detail/3=>{nid:3}
+        var bookid = $routeParams.nid;
+        //去后台查询当前的信息的内容 id:1 name,price,cover
+        $scope.book = book.get({id:bookid});//查询一本书的信息将内容放到book中
+        $scope.goBack = function(){
+            $location.path('/book/list');
+        };
+        //删除操作
+        $scope.del = function(b){
+//            book.delete({id:b.id});//angylar帮我们做了一个操作
+            book.delete(b).$promise.then(function(){
+                $location.path('/book/list');
+            });//只需要传入
+        };
+        //控制显示隐藏
+        $scope.show = false;
+        //确认修改
+        $scope.confirm=function(){
+//          $scope.book;//当点击时 $scope.book最新的状态需要保存
+            book.update({id:$scope.book.id},{book:$scope.book}).$promise.then(function(){
+                $scope.show = false;
+            });
+            //          在url中                 在请求体中
+        }
+    });
+    app.controller('listCtrl',function($scope,$location,book){
+        //window.location.href
+        //去详情页的方法
+        $scope.books = book.query();//返回一个数组类型
+        $scope.goDetail = function(id){
+            $location.path('/book/detail/'+id);
+        }
+    });
+</script>
+</body>
+</html>
